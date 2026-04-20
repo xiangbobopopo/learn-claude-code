@@ -14,7 +14,7 @@ class SimpleBrowser:
         self.root = root
         self.root.title("Simple Browser")
         self.root.geometry("800x600")
-        
+
         # Create the UI
         self.create_ui()
         
@@ -55,15 +55,16 @@ class SimpleBrowser:
         url = self.url_var.get().strip()
         if not url:
             return
-            
+
         # Add protocol if missing
         if not urlparse(url).scheme:
-            url = 'https://' + url
-            
+            url = "https://" + url
+
         self.url_var.set(url)
         self.status_var.set(f"Loading {url}...")
-        
-        # Open in default browser (since Tkinter doesn't have built-in web rendering)
+
+        # Open in default browser (since Tkinter doesn't have built-in web
+        # rendering)
         webbrowser.open(url)
         self.status_var.set(f"Loaded {url}")
         
