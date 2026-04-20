@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Web Page</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .interactive-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            min-height: 50px;
+        }
+        
+        .color-box {
+            width: 50px;
+            height: 50px;
+            display: inline-block;
+            margin: 5px;
+            border: 2px solid white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .color-box:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Interactive Web Page</h1>
+        
+        <div class="interactive-section">
+            <h2>📝 Text Input</h2>
+            <input type="text" id="textInput" placeholder="Type something...">
+            <button onclick="showText()">Show Text</button>
+            <div id="textOutput"></div>
+        </div>
+        
+        <div class="interactive-section">
+            <h2>🎨 Color Picker</h2>
+            <div id="colorBoxes"></div>
+            <div id="selectedColor"></div>
+        </div>
+        
+        <div class="interactive-section">
+            <h2>📊 Counter</h2>
+            <p>Count: <span id="counter">0</span></p>
+            <button onclick="incrementCounter()">+</button>
+            <button onclick="decrementCounter()">-</button>
+            <button onclick="resetCounter()">Reset</button>
+        </div>
+        
+        <div class="interactive-section">
+            <h2>💬 Message Board</h2>
+            <textarea id="messageInput" placeholder="Write a message..."></textarea>
+            <button onclick="addMessage()">Add Message</button>
+            <div id="messageBoard"></div>
+        </div>
+    </div>
+
+    <script>
+        // Text input functionality
+        function showText() {
+            const input = document.getElementById('textInput').value;
+            const output = document.getElementById('textOutput');
+            output.innerHTML = `<strong>You typed:</strong> "${input}"`;
+        }
+        
+        // Color picker functionality
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+        const colorBoxes = document.getElementById('colorBoxes');
+        
+        colors.forEach(color => {
+            const box = document.createElement('div');
+            box.className = 'color-box';
+            box.style.backgroundColor = color;
+            box.onclick = () => selectColor(color);
+            colorBoxes.appendChild(box);
+        });
+        
+        function selectColor(color) {
+            document.getElementById('selectedColor').innerHTML = 
+                `<p>Selected color: <span style="background: ${color}; padding: 5px 10px; border-radius: 3px;">${color}</span></p>`;
+        }
+        
+        // Counter functionality
+        let count = 0;
+        
+        function incrementCounter() {
+            count++;
+            updateCounter();
+        }
+        
+        function decrementCounter() {
+            count--;
+            updateCounter();
+        }
+        
+        function resetCounter() {
+            count = 0;
+            updateCounter();
+        }
+        
+        function updateCounter() {
+            document.getElementById('counter').textContent = count;
+        }
+        
+        // Message board functionality
+        function addMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                const messageBoard = document.getElementById('messageBoard');
+                const messageElement = document.createElement('div');
+                messageElement.style.cssText = `
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 10px;
+                    margin: 5px 0;
+                    border-radius: 5px;
+                    border-left: 3px solid #4CAF50;
+                `;
+                messageElement.textContent = message;
+                messageBoard.appendChild(messageElement);
+                input.value = '';
+            }
+        }
+        
+        // Add enter key support for text input
+        document.getElementById('textInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                showText();
+            }
+        });
+    </script>
+</body>
+</html>

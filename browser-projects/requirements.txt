@@ -1,0 +1,27 @@
+# Web Browser Development Projects - Requirements
+
+# Core web scraping and automation
+requests==2.31.0
+beautifulsoup4==4.12.2
+selenium==4.15.0
+
+# Web framework and database
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+SQLAlchemy==2.0.23
+
+# Additional utilities
+lxml==4.9.3
+html5lib==1.1
+
+# For web automation (optional - requires separate installation)
+# chromedriver-binary==119.0.6045.105.0  # Download from official site instead
+
+# Development tools
+python-dotenv==1.0.0
+
+# Note: For Selenium, you'll also need to download ChromeDriver separately:
+# https://sites.google.com/chromium.org/driver/
+
+# Installation command:
+# pip install -r requirements.txt
