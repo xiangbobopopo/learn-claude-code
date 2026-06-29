@@ -104,12 +104,76 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
         return f"Error: {e}"
 
 
+def run_system_info(category: str = "all") -> str:
+    try:
+        import platform
+        import datetime
+        import os
+
+        info = []
+        info.append(f"=== System Information ({category}) ===")
+        info.append(f"Timestamp: {datetime.datetime.now()}")
+
+        if category in ["all", "system"]:
+            info.append(f"\nSystem: {platform.system()} {platform.release()}")
+            info.append(f"Machine: {platform.machine()}")
+            info.append(f"Processor: {platform.processor()}")
+            info.append(f"Python: {platform.python_version()}")
+
+        # Try to get more detailed system info if psutil is available
+        try:
+            import psutil
+            if category in ["all", "cpu"]:
+                info.append(f"\nCPU: {psutil.cpu_count(logical=False)} cores, {psutil.cpu_count(logical=True)} threads")
+                info.append(f"CPU Usage: {psutil.cpu_percent(interval=1)}%")
+
+            if category in ["all", "memory"]:
+                memory = psutil.virtual_memory()
+                info.append(f"\nMemory: {memory.used // (1024**3)}GB / {memory.total // (1024**3)}GB ({memory.percent}% used)")
+
+            if category in ["all", "disk"]:
+                disk = psutil.disk_usage('/')
+                info.append(f"\nDisk: {disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB ({disk.percent}% used)")
+        except ImportError:
+            info.append("\nNote: Install 'psutil' for detailed CPU/Memory/Disk info")
+
+        return "\n".join(info)
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def run_hash_file(path: str, algorithm: str = "sha256") -> str:
+    try:
+        import hashlib
+
+        fp = safe_path(path)
+        if not fp.exists():
+            return f"Error: File not found: {path}"
+
+        hash_func = getattr(hashlib, algorithm.lower(), None)
+        if not hash_func:
+            return f"Error: Unsupported algorithm: {algorithm}"
+
+        with open(fp, 'rb') as f:
+            file_hash = hashlib.new(algorithm.lower())
+            chunk = f.read(8192)
+            while chunk:
+                file_hash.update(chunk)
+                chunk = f.read(8192)
+
+        return f"{algorithm.upper()}: {file_hash.hexdigest()}\nFile: {path}\nSize: {fp.stat().st_size} bytes"
+    except Exception as e:
+        return f"Error: {e}"
+
+
 # -- The dispatch map: {tool_name: handler} --
 TOOL_HANDLERS = {
     "bash": lambda **kw: run_bash(kw["command"]),
     "read_file": lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: run_write(kw["path"], kw["content"]),
     "edit_file": lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
+    "system_info": lambda **kw: run_system_info(kw.get("category", "all")),
+    "hash_file": lambda **kw: run_hash_file(kw["path"], kw.get("algorithm", "sha256")),
 }
 
 TOOLS = [
@@ -157,6 +221,37 @@ TOOLS = [
                 "new_text": {"type": "string"},
             },
             "required": ["path", "old_text", "new_text"],
+        },
+    },
+    {
+        "name": "system_info",
+        "description": "Get system information (CPU, memory, disk, etc.)",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": ["all", "system", "cpu", "memory", "disk"],
+                    "description": "Type of system info to retrieve"
+                }
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "hash_file",
+        "description": "Calculate file hash using specified algorithm",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "algorithm": {
+                    "type": "string",
+                    "enum": ["md5", "sha1", "sha256", "sha512"],
+                    "description": "Hash algorithm to use"
+                }
+            },
+            "required": ["path"],
         },
     },
 ]

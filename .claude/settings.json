@@ -1,16 +1,18 @@
 {
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "ak_2HK4YU6US96k91q6qJ3S54Li0Dj3T",
-    "ANTHROPIC_BASE_URL": "https://api.longcat.chat/anthropic",
-    "ANTHROPIC_MODEL": "LongCat-Flash-Chat",
-    "ANTHROPIC_SMALL_FAST_MODEL": "LongCat-Flash-Chat",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "LongCat-Flash-Chat",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "LongCat-Flash-Chat",
+    "ANTHROPIC_API_KEY": "sk-5b5622d3fea94724bccb33387ad0794b",
+    "ANTHROPIC_AUTH_TOKEN": "sk-5b5622d3fea94724bccb33387ad0794b",
+    "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+    "ANTHROPIC_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_SMALL_FAST_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-flash",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-flash",
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "6000",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   },
   "permissions": {
     "allow": [],
     "deny": []
-  }
+  },
+  "claudeCode.preferredLocation": "panel"
 }

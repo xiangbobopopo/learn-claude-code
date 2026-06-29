@@ -49,7 +49,7 @@ load_dotenv(override=True)
 if os.getenv("ANTHROPIC_BASE_URL"):
     os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-WORKDIR = Path.cwd()
+WORKDIR = Path.cwd().parent
 api_key = os.getenv("ANTHROPIC_API_KEY")
 base_url = os.getenv("ANTHROPIC_BASE_URL")
 

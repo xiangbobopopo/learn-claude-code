@@ -93,22 +93,34 @@ def run_bash(command: str) -> str:
 
 
 # -- The core pattern: a while loop that calls tools until the model stops --
+def agent_loop(messages: list):
+    while True:
+        response = client.messages.create(
+            model=MODEL,
+            system=SYSTEM,
+            messages=messages,
+            tools=TOOLS,
+            max_tokens=8000,
+        )
+        print("*************", response)
+        # Append assistant turn
+        messages.append({"role": "assistant", "content": response.content})
+        # If the model didn't call a tool, we're done
+        if response.stop_reason != "tool_use":
+            return
+        # Execute each tool call, collect results
+        results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                output = run_bash(block.input["command"])
+                results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": output,
+                    }
+                )
+        messages.append({"role": "user", "content": results})
 
-response = client.messages.create(
-    model=MODEL,
-    system=SYSTEM,
-    messages=[{"role": "user", "content": "hello"}],
-    tools=TOOLS,
-    max_tokens=8000,
-)
-print("*************", response)
 
-
-# Message(id='4ed3732072d8461baa095f47047d1ea9', 
-#                       container=None, 
-#                       content=[TextBlock(citations=None, text='Hello! How can I help you today?', type='text')], 
-#                       model='longcat-flash-chatai-api', role='assistant', 
-#                       stop_details=None
-# , stop_reason='end_turn', stop_sequence=None, type='message', 
-#                       usage=Usage(cache_creation=None, cache_creation_input_tokens=None, cache_read_input_tokens=None
-#                     , inference_geo=None, input_tokens=236, output_tokens=10, server_tool_use=None, service_tier=None))
+agent_loop([{"role":"user","content":"hello,how are you"}])
