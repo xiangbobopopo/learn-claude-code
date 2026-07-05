@@ -246,7 +246,9 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms06 >> \033[0m")
+            # query = input("\033[36ms06 >> \033[0m")
+            query = "Keep reading files until compression triggers automatically"
+
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):

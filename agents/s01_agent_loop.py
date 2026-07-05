@@ -49,7 +49,7 @@ if os.getenv("ANTHROPIC_BASE_URL"):
 api_key = os.getenv("ANTHROPIC_API_KEY")
 base_url = os.getenv("ANTHROPIC_BASE_URL")
 
-# For LongCat, we need to use custom headers with Bearer token
+# for deepseek, we need to use custom headers with Bearer token
 default_headers = {"Authorization": f"Bearer {api_key}"}
 client = Anthropic(
     api_key=None, base_url=base_url, default_headers=default_headers
@@ -60,15 +60,16 @@ SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act
 
 TOOLS = [
     {
-        "name": "bash",
+        "name": "paul_bash_runner",
         "description": "Run a shell command.",
         "input_schema": {
             "type": "object",
-            "properties": {"command": {"type": "string"}},
-            "required": ["command"],
+            "properties": {"command": {"type": "string"},"description":{"type":"string"}},
+            "required": ["command","description"],
         },
     },
 ]
+
 
 
 def run_bash(command: str) -> str:
@@ -92,6 +93,11 @@ def run_bash(command: str) -> str:
         return f"Error: {e}"
 
 
+TOOLS_HANDLER={
+    "paul_bash_runner": lambda **kw: run_bash(kw["command"])
+}
+
+
 # -- The core pattern: a while loop that calls tools until the model stops --
 def agent_loop(messages: list):
     while True:
@@ -113,7 +119,8 @@ def agent_loop(messages: list):
         for block in response.content:
             if block.type == "tool_use":
                 print(f"\033[33m$ {block.input['command']}\033[0m")
-                output = run_bash(block.input["command"])
+                tool_executor=TOOLS_HANDLER.get(block.name)
+                output = tool_executor(**block.input)
                 print(output[:200])
                 results.append(
                     {

@@ -177,7 +177,8 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms04 >> \033[0m")
+            # query = input("\033[36ms04 >> \033[0m")
+            query="Use a subtask to find what testing framework this project uses"
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):

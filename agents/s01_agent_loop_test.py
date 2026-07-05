@@ -123,4 +123,4 @@ def agent_loop(messages: list):
         messages.append({"role": "user", "content": results})
 
 
-agent_loop([{"role":"user","content":"hello,how are you"}])
+agent_loop([{"role":"user","content":"pls how the files in this directory"}])
