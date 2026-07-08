@@ -9,6 +9,8 @@ import re
 import yaml
 import time
 import json
+import threading
+import uuid
 
 dotenv.load_dotenv()
 base_url = os.getenv("ANTHROPIC_BASE_URL")
@@ -199,6 +201,81 @@ def run_bash(command: str):
     return out
 
 
+class BackgroundManager:
+    def __init__(self):
+        self.task = {}
+        self._notification_queue = []
+        self._lock = threading.Lock
+
+    def run(self, command: str):
+        task_id = str(uuid.uuid4())[:8]
+        self.task[task_id] = {"status": "running", "result": "", "command": command}
+        thread = threading.Thread(
+            target=self._excecute, args=(task_id, command), daemon=True
+        )
+        thread.start()
+        return f"Background task {task_id} running..."
+
+    def _execute(self, task_id: str, command: str):
+        try:
+            r = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            output = (r.stdout + r.stderr).strip()
+            status = "complted"
+        except subprocess.TimeoutExpired:
+            output = "Error: timeout"
+            status = "timeout"
+        except Exception as e:
+            output = f"Error: {e}"
+            status = "error"
+        self.task[task_id][status] = status
+        self.task[task_id][output] = output
+        with self._lock:
+            self._notification_queue.append(
+                {
+                    "task_id": task_id,
+                    "status": status,
+                    "command": command,
+                    "result": (output or "no output")[:500]
+                }
+            )
+
+    def check_task(self, task_id: str = None):
+        if task_id:
+            task = self.task.get(task_id)
+            return f"[{task['status']} {task['command']} \n {task.get('result', 'running')}]"
+        else:
+            lines = []
+            for task_id, task in self.task.items():
+                lines.append(f"{task_id} {task['status']} {task['command']} {task['result'][:100]}")
+            return '\n'.join(lines) if lines else "no task running"
+
+
+VALID_MESSAGE_TYPES = ["message"]
+
+
+class MessageBus():
+    def __init__(self, inbox_dir: Path):
+        self.inbox_dir = inbox_dir,
+        self.inbox_dir.mkdir(parents=True, exist_ok=True)
+
+    def send(self, sender: str, to: str, content: str, msg_type: str = "message", extra: dict = None):
+        to_path = self.inbox_dir / f"{to}.jsonl"
+        content = {
+            "from": sender,
+            'content': content,
+            "type": msg_type
+        }
+        ...
+
+    def read_inbox(self):
+        ...
+
+
 TOOLS = [
     {
         "name": "run_bash",
@@ -262,13 +339,16 @@ TOOLS = [
 ]
 
 TODO = TodoManager()
+BG_Task = BackgroundManager()
 
 TOOLS_HANDLER = {
     "run_bash": lambda **kw: run_bash(kw["command"]),
     "todo": lambda **kw: TODO.update(kw["items"]),
     "load_skill": lambda **kw: SKILL.get_content(kw["name"]),
     "task_create": lambda **kw: TaskManager.create_task(kw["subject"], kw.get("description", "")),
-    "task_update": lambda **kw: TaskManager.update_task(kw["task_id"], kw[""])
+    "task_update": lambda **kw: TaskManager.update_task(kw["task_id"], kw[""]),
+    "background_run": lambda **kw: BG_Task.run(kw["command"]),
+    "check_background": lambda **kw: BG_Task.check_task(kw.get("task_id", None))
 }
 
 
