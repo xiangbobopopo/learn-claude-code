@@ -233,6 +233,7 @@ def agent_loop(messages: list):
         # Layer 3: manual compact triggered by the compact tool
         if manual_compact:
             print("[manual compact]")
+            # pay attention to messages[:] not messages = auto_compact(messages) to modify in place
             messages[:] = auto_compact(messages)
             return
 

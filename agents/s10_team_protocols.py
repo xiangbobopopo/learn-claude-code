@@ -463,7 +463,10 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms10 >> \033[0m")
+            # query = input("\033[36ms10 >> \033[0m")
+            # query="Spawn alice as a coder. Then request her shutdown."
+            # query="List teammates to see alice's status after shutdown approval"
+            query="Spawn charlie, have him submit a plan, then approve it."
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):

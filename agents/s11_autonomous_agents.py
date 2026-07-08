@@ -557,7 +557,8 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms11 >> \033[0m")
+            # query = input("\033[36ms11 >> \033[0m")
+            query="Create 3 tasks on the board, then spawn alice and bob. Watch them auto-claim."
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):

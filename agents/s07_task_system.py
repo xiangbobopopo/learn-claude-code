@@ -228,7 +228,8 @@ if __name__ == "__main__":
     history = []
     while True:
         try:
-            query = input("\033[36ms07 >> \033[0m")
+            # query = input("\033[36ms07 >> \033[0m")
+            query="""Create 3 tasks: "Setup project", "Write code", "Write tests". Make them depend on each other in order."""
         except (EOFError, KeyboardInterrupt):
             break
         if query.strip().lower() in ("q", "exit", ""):
