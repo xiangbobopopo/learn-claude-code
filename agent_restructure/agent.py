@@ -1,3 +1,5 @@
+import threading
+
 import dotenv
 from anthropic import Anthropic
 from pathlib import Path
@@ -22,7 +24,7 @@ TASK_DIR = WOKR_DIR / '.tasks'
 class SkillLoader:
     def __init__(self, skill_dir: Path):
         self.skill_dir = skill_dir
-        self.skills = []
+        self.skills = {}
         self._load_all()
 
     def _load_all(self):
@@ -265,8 +267,8 @@ TOOLS_HANDLER = {
     "run_bash": lambda **kw: run_bash(kw["command"]),
     "todo": lambda **kw: TODO.update(kw["items"]),
     "load_skill": lambda **kw: SKILL.get_content(kw["name"]),
-    "task_create":lambda **kw: TaskManager.create_task(kw["subject"],kw.get("description",""))
-    "task_update":lambda **kw: TaskManager.update_task(kw["task_id"],kw[""])
+    "task_create": lambda **kw: TaskManager.create_task(kw["subject"], kw.get("description", "")),
+    "task_update": lambda **kw: TaskManager.update_task(kw["task_id"], kw[""])
 }
 
 
@@ -380,3 +382,99 @@ class TaskManager():
 
     def get(self, id: int):
         return json.dumps(self._load(id), indent=2, ensure_ascii=False)
+
+
+# agent teams.1,create teammate. 2, teammate communication.
+VALID_MESSAGES = ["message", "broad_cast"]
+
+
+class MessageBus:
+    def __init__(self):
+        self.inbox_dir = WOKR_DIR / ".team" / ".inbox"
+        self.inbox_dir.mkdir(parents=True, exist_ok=True)
+
+    def send_message(self, sender: str, receiver: str, message: str):
+        ...
+
+    def read_message(self, receiver: str):
+        ...
+
+
+class TeamManager(object):
+    def __init__(self, team_name: str):
+        self.team_dir = WORK_DIR / ".team"
+        self.config_path = self.team_dir / ".config.txt"
+        self.team_dir.mkdir(parents=True, exist_ok=True)
+        self._create_team(team_name)
+        self.config = self._load_config()
+        self.threads={}
+
+    def _load_config(self):
+        return json.loads(self.config_path.read_text())
+
+    def _create_team(self, team_name: str):
+        team = {
+            "name": team_name,
+            "description": "",
+            "members": [],
+            "create_time": time.time()
+        }
+        with open(self.config, 'w') as f:
+            f.write(json.dumps(team, ensure_ascii=False, indent=2))
+
+    def find_teammate(self, name):
+        for item in self.config["members"]:
+            return item[name]
+
+    def spawn_teammate(self, name: str, role: str, prompt: str):
+        teammate = self.find_teammate("name")
+        if teammate:
+            if teammate["status"] not in ["idle", "shut_down"]:
+                return f"Error: {name} is currently in {teammate['status']}"
+            teammate['status'] = "working"
+            teammate['role'] = role
+        else:
+            teammate = {
+                "name": name,
+                "role": role,
+                "status": "working"
+            }
+            self.config["members"].append(teammate)
+            self._save_config()
+        thread=threading.Thread(
+            target=self._teammate_loop(),args=(name,role,prompt),
+            daemon=True
+        )
+        self.threads[name]=thread
+        thread.start()
+
+
+    def _save_config(self):
+        self.config_path.write_text(json.dumps(self.config,indent=2,ensure_ascii=False))
+
+        
+    def _teammate_loop(self,name,role, prompt: str):
+        system_message=f"""
+        your name is {name} and you are a {role}, you work at {WORK_DIR} 
+"""
+        messages = [{"role": "user", "content": prompt}]
+        for _ in range(50):
+            response = client.messages.create(
+                model=model,
+                system=system_message,
+                messages=messages,
+                tools=TOOLS,
+                max_tokens=2000
+            )
+            result = []
+            if response.stop_reason != "tool_use":
+                return
+
+            for block in response.content:
+                if block.type=="tool_use":
+                    handler=TOOLS_HANDLER.get(block.name)
+
+
+if __name__ == "__main__":
+    msg_bus = MessageBus()
+    team_manager = TeamManager("development_department")
