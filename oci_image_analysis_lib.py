@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-图片边界识别 & 像素面积计算工具
-=================================
+图片边界识别 & 像素面积计算工具（纯函数版）
+===========================================
 使用 OpenCV 进行精确的边界检测和面积计算（结果确定、可复现）。
 可选集成 OCI Generative AI (Gemini) 对区域进行语义标注。
 
@@ -11,22 +11,13 @@
 
 前置条件:
   pip install opencv-python numpy
-  pip install oci>=2.130.0    (仅 --use-llm 时需要)
-
-用法:
-  # 纯 OpenCV 分割（最稳定）
-  python oci_image_analysis.py --image photo.jpg
-
-  # 使用 Gemini 辅助标注区域名称
-  python oci_image_analysis.py --image photo.jpg --use-llm \
-      --compartment-id ocid1.compartment.oc1... \
-      --model-id google.gemini-2.5-pro
+  pip install oci>=2.130.0    (仅 use_llm=True 时需要)
 """
 
 import cv2
 import numpy as np
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -126,7 +117,6 @@ def segment_by_edge_contour(
     """
     基于边缘检测 + 轮廓查找的分割。
     适合：形状边界清晰的图片（机械零件、建筑图纸）。
-    注意：可能产生大量小轮廓，需过滤。
     """
     h, w = image.shape[:2]
     total_px = h * w
@@ -178,7 +168,6 @@ def segment_by_hsv_threshold(
     """
     基于 HSV 颜色阈值的手动分割。
     适合：已知目标颜色的场景（如红色区域、蓝色区域）。
-    可通过 --color-ranges 传入自定义颜色范围。
     """
     h, w = image.shape[:2]
     total_px = h * w
@@ -374,7 +363,6 @@ def label_regions_with_gemini(
 
         # 解析 JSON
         import json
-        # 提取 JSON 部分
         start = text.find("{")
         end = text.rfind("}") + 1
         if start >= 0 and end > start:
@@ -408,14 +396,11 @@ def draw_regions(
 
     for i, region in enumerate(regions):
         color = colors[i % len(colors)]
-        # 绘制边界框
         x, y, w, h = region.bbox
         cv2.rectangle(result, (x, y), (x + w, y + h), color, 2)
 
-        # 标注
         if show_labels:
             label = f"{region.label}: {region.area_px}px ({region.area_pct:.1f}%)"
-            # 文字背景
             (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
             cv2.rectangle(result, (x, y - th - 4), (x + tw + 4, y), color, -1)
             cv2.putText(
@@ -430,7 +415,7 @@ def draw_regions(
     return result
 
 
-# ── 主流程 ────────────────────────────────────────────
+# ── 主函数（纯参数输入） ────────────────────────────────
 
 
 SEGMENTERS = {
@@ -441,107 +426,85 @@ SEGMENTERS = {
 }
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="图片边界识别 & 像素面积计算",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-分割方法说明:
-  clustering  颜色聚类分割 — 适合颜色对比明显的图片 (默认)
-  edge        边缘检测+轮廓 — 适合形状边界清晰的图片
-  hsv         HSV 颜色阈值  — 适合已知目标颜色的场景
-  watershed   分水岭算法     — 适合物体相互接触的场景
+def analyze_image(
+    image_path: str,
+    method: str = "clustering",
+    clusters: int = 4,
+    min_area: float = 0.01,
+    show: bool = False,
+    save: Optional[str] = None,
+    use_llm: bool = False,
+    compartment_id: Optional[str] = None,
+    model_id: str = "google.gemini-2.5-pro",
+    profile: str = "DEFAULT",
+) -> list[Region]:
+    """
+    对图片进行区域分割和面积计算。
 
-示例:
-  python oci_image_analysis.py --image chart.jpg --method clustering --clusters 5
-  python oci_image_analysis.py --image parts.jpg --method edge --min-area 0.005
-  python oci_image_analysis.py --image photo.jpg --method watershed --use-llm \\
-      --compartment-id ocid1.compartment.oc1...
-        """,
-    )
-    parser.add_argument("--image", required=True, help="图片文件路径")
-    parser.add_argument(
-        "--method", choices=list(SEGMENTERS.keys()), default="clustering",
-        help="分割方法 (默认 clustering)",
-    )
-    parser.add_argument(
-        "--clusters", type=int, default=4,
-        help="颜色聚类数 (仅 clustering 方法, 默认 4)",
-    )
-    parser.add_argument(
-        "--min-area", type=float, default=0.01,
-        help="最小区域占比 (默认 0.01 = 1%%, 小于此值的区域被过滤)",
-    )
-    parser.add_argument(
-        "--show", action="store_true",
-        help="显示可视化结果窗口",
-    )
-    parser.add_argument(
-        "--save", default=None,
-        help="保存可视化结果到文件 (如 result.jpg)",
-    )
+    参数:
+        image_path:      图片文件路径（必填）
+        method:          分割方法: "clustering" | "edge" | "hsv" | "watershed"
+        clusters:        颜色聚类数（仅 clustering 方法）
+        min_area:        最小区域占比 (0.01 = 1%)
+        show:            是否显示可视化窗口
+        save:            保存可视化结果到文件 (如 "result.jpg")
+        use_llm:         是否使用 Gemini 进行语义标注
+        compartment_id:  OCI Compartment OCID (use_llm 时必填)
+        model_id:        Gemini 模型 ID
+        profile:         OCI 配置文件名
 
-    # LLM 辅助标注
-    parser.add_argument(
-        "--use-llm", action="store_true",
-        help="使用 Gemini 对分割区域进行语义标注",
-    )
-    parser.add_argument("--compartment-id", help="OCI Compartment OCID")
-    parser.add_argument("--model-id", default="google.gemini-2.5-pro", help="模型 ID")
-    parser.add_argument("--profile", default="DEFAULT", help="OCI 配置文件名")
-
-    args = parser.parse_args()
+    返回:
+        list[Region]: 分割出的区域列表
+    """
+    if method not in SEGMENTERS:
+        raise ValueError(f"未知分割方法 '{method}'，可选: {list(SEGMENTERS.keys())}")
 
     # 1. 读取图片
-    image = cv2.imread(args.image)
+    image = cv2.imread(image_path)
     if image is None:
-        logger.error(f"无法读取图片: {args.image}")
-        return
+        raise FileNotFoundError(f"无法读取图片: {image_path}")
     h, w = image.shape[:2]
     logger.info(f"图片尺寸: {w}x{h} = {w * h} px")
 
     # 2. 选择分割方法
-    seg_fn = SEGMENTERS[args.method]
-
-    if args.method == "clustering":
+    if method == "clustering":
         regions = segment_by_color_clustering(
-            image, n_clusters=args.clusters, min_area_ratio=args.min_area,
+            image, n_clusters=clusters, min_area_ratio=min_area,
         )
-    elif args.method == "edge":
+    elif method == "edge":
         regions = segment_by_edge_contour(
-            image, min_contour_area_ratio=args.min_area,
+            image, min_contour_area_ratio=min_area,
         )
-    elif args.method == "hsv":
+    elif method == "hsv":
         regions = segment_by_hsv_threshold(
-            image, min_area_ratio=args.min_area,
+            image, min_area_ratio=min_area,
         )
-    elif args.method == "watershed":
+    elif method == "watershed":
         regions = segment_by_watershed(
-            image, min_area_ratio=args.min_area,
+            image, min_area_ratio=min_area,
         )
     else:
-        regions = seg_fn(image, min_area_ratio=args.min_area)
+        regions = SEGMENTERS[method](image, min_area_ratio=min_area)
 
     if not regions:
         logger.warning("未识别到任何区域，请调整参数")
-        return
+        return []
 
     # 3. 可选：Gemini 语义标注
-    if args.use_llm:
-        if not args.compartment_id:
-            logger.error("--use-llm 需要 --compartment-id")
-            return
+    if use_llm:
+        if not compartment_id:
+            raise ValueError("use_llm=True 但未提供 compartment_id")
         regions = label_regions_with_gemini(
-            image_path=args.image,
+            image_path=image_path,
             regions=regions,
-            compartment_id=args.compartment_id,
-            model_id=args.model_id,
-            config_profile=args.profile,
+            compartment_id=compartment_id,
+            model_id=model_id,
+            config_profile=profile,
         )
 
     # 4. 输出结果
     print("\n" + "=" * 70)
-    print(f"  分割方法: {args.method}")
+    print(f"  分割方法: {method}")
     print(f"  图片尺寸: {w}x{h} = {w * h:,} px")
     print("=" * 70)
     print(f"  {'区域名称':20s}  {'像素面积':>10s}  {'占比':>6s}  {'位置':>30s}  {'平均颜色'}")
@@ -552,14 +515,26 @@ def main():
     print(f"  共识别 {len(regions)} 个区域")
 
     # 5. 可视化
-    if args.save or args.show:
-        result = draw_regions(image, regions, save_path=args.save)
-        if args.show:
+    if save or show:
+        result = draw_regions(image, regions, save_path=save)
+        if show:
             cv2.imshow("Segmentation Result", result)
             logger.info("按任意键关闭窗口 ...")
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
+    return regions
+
+
+# ── 命令行入口（保留简单调用） ─────────────────────────
+
 
 if __name__ == "__main__":
-    main()
+    # 示例：直接传参调用
+    regions = analyze_image(
+        image_path="photo.jpg",
+        method="clustering",
+        clusters=4,
+        min_area=0.01,
+        save="result.jpg",
+    )
