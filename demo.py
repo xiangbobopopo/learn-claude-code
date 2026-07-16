@@ -92,3 +92,85 @@ area = drawing_area(drawing0)
 
 print("Drawing[0] area:")
 print(area, "pt²")
+
+
+
+
+import fitz
+import matplotlib.pyplot as plt
+
+
+def bezier(p0, p1, p2, p3, steps=50):
+    points = []
+
+    for i in range(steps + 1):
+        t = i / steps
+
+        x = (
+            (1-t)**3 * p0.x +
+            3*(1-t)**2*t*p1.x +
+            3*(1-t)*t**2*p2.x +
+            t**3*p3.x
+        )
+
+        y = (
+            (1-t)**3 * p0.y +
+            3*(1-t)**2*t*p1.y +
+            3*(1-t)*t**2*p2.y +
+            t**3*p3.y
+        )
+
+        points.append((x, y))
+
+    return points
+
+
+doc = fitz.open("bag.pdf")
+
+page = doc[0]
+
+drawing = page.get_drawings()[0]
+
+
+x = []
+y = []
+
+
+for item in drawing["items"]:
+
+    cmd = item[0]
+
+    # line
+    if cmd == "l":
+
+        p1 = item[1]
+        p2 = item[2]
+
+        x.extend([p1.x, p2.x])
+        y.extend([p1.y, p2.y])
+
+
+    # bezier
+    elif cmd == "c":
+
+        pts = bezier(
+            item[1],
+            item[2],
+            item[3],
+            item[4]
+        )
+
+        for px, py in pts:
+            x.append(px)
+            y.append(py)
+
+
+plt.figure(figsize=(6,6))
+
+plt.plot(x, y)
+
+plt.gca().invert_y_axis()  # PDF坐标原点在左上
+
+plt.axis("equal")
+
+plt.show()
